@@ -1,1 +1,4 @@
 **/build
+.config/nvim/plugged/**
+.config/nvim/.netrwhist
+.config/coc
