@@ -5,7 +5,6 @@ void sendStart() {
   pinMode(SDA, OUTPUT);
   digitalWrite(SDA, HIGH);
   digitalWrite(SCL, HIGH);
-  delay(20);
   digitalWrite(SDA, LOW);
   digitalWrite(SCL, LOW);
   Serial.println("START sent");
@@ -15,7 +14,6 @@ void sendStop() {
   pinMode(SDA, OUTPUT);
   digitalWrite(SDA, LOW);
   digitalWrite(SCL, HIGH);
-  delay(20);
   digitalWrite(SDA, HIGH);
   digitalWrite(SCL, LOW);
   Serial.println("STOP sent");
@@ -33,11 +31,8 @@ void send8Bits(int value) {
       Serial.print("0");
       digitalWrite(SDA, LOW);
     }
-    delay(20);
     digitalWrite(SCL, HIGH);
-    delay(20);
     digitalWrite(SCL, LOW);
-    delay(20);
   }
   Serial.print(F(" (0x"));
   Serial.print(value, HEX);
@@ -64,13 +59,12 @@ void sendAcknowledge(boolean acknowledge) {
 }
 
 void read8Bits() {
-  pinMode(SDA, INPUT);
+  pinMode(SDA, INPUT_PULLUP);
   Serial.print("Reading: ");
   for (int x=7; x>=0; x--) {
     digitalWrite(SCL, HIGH);
-    digitalWrite(SCL, LOW);
-    delay(20);
     int xthBit = digitalRead(SDA);
+    digitalWrite(SCL, LOW);
     Serial.print(xthBit);
   }
   Serial.println();
@@ -93,11 +87,15 @@ void eepromRandomRead(int address) {
   readAcknowledge();
   send8Bits(address);
   readAcknowledge();
+  eepromCurrentAddrRead();
+}
+
+void eepromCurrentAddrRead() {
   sendStart();
-  send8Bits(B10100001);
+  send8Bits(0xA1);
   readAcknowledge();
   read8Bits();
-  sendAcknowledge(false);
+  readAcknowledge();
   sendStop();
 }
 
@@ -112,25 +110,16 @@ void setup() {
   // 1010 3<DEVICE_ADR> 1<W0/R1>
 
   // Write 10101010 to 0
-  eepromWrite(0x01, 0xFF);
+//  for (int addr=0; addr<5; addr++) {
+//    eepromWrite(addr, addr);
+//  }
 
   // Random Read 0
-//   eepromRandomRead(0x01);
+//   eepromWrite(0x00, 0x00);
+//   delay(100);
+//   eepromCurrentAddrRead();
+   eepromRandomRead(0x02);
 
-//   sendStart();
-//   send8Bits(B10100000);
-//   readAcknowledge();
-//   read8Bits();
-//   sendAcknowledge(true);
-//   read8Bits();
-//   sendAcknowledge(true);
-//   read8Bits();
-//   sendAcknowledge(true);
-//   read8Bits();
-//   sendAcknowledge(true);
-//   read8Bits();
-//   sendAcknowledge(true);
-//   sendStop();
   
 }
 
