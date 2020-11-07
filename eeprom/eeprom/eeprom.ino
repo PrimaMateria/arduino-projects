@@ -1,125 +1,151 @@
 #define SCL 9
 #define SDA 10
 
-void sendStart() {
+void _writeBit(bool bitv) {
   pinMode(SDA, OUTPUT);
-  digitalWrite(SDA, HIGH);
+  // signal set on clock-out
+  digitalWrite(SDA, bitv ? HIGH : LOW);
   digitalWrite(SCL, HIGH);
-  digitalWrite(SDA, LOW);
   digitalWrite(SCL, LOW);
-  Serial.println("START sent");
+  Serial.print(bitv);
 }
 
-void sendStop() {
-  pinMode(SDA, OUTPUT);
-  digitalWrite(SDA, LOW);
+bool _readBit() {
+  pinMode(SDA, INPUT_PULLUP);
+  // Read on clock-out
   digitalWrite(SCL, HIGH);
-  digitalWrite(SDA, HIGH);
+  bool bitv = digitalRead(SDA);
   digitalWrite(SCL, LOW);
-  Serial.println("STOP sent");
+  Serial.print(bitv);
+  return bitv;
 }
 
-void send8Bits(int value) {
+void _start() {
   pinMode(SDA, OUTPUT);
-  Serial.print("Writing: ");
+  // Rising on clock-out
+  digitalWrite(SDA, HIGH);
+  digitalWrite(SCL, HIGH);
+  
+  digitalWrite(SDA, LOW);
+  digitalWrite(SCL, LOW);
+  Serial.println(F("start"));
+}
+
+void _stop() {
+  pinMode(SDA, OUTPUT);
+  // Falling on clock-out
+  digitalWrite(SDA, LOW);
+  digitalWrite(SCL, HIGH);
+  
+  digitalWrite(SDA, HIGH);
+  digitalWrite(SCL, LOW);
+  Serial.println(F("stop"));
+}
+
+void _writeByte(byte bytev) {
   for (int x=7; x>=0; x--) {
-    boolean xthBit = (value >> x) & 1;
-    if (xthBit != 0) {
-      Serial.print("1");
-      digitalWrite(SDA, HIGH);
-    } else {
-      Serial.print("0");
-      digitalWrite(SDA, LOW);
-    }
-    digitalWrite(SCL, HIGH);
-    digitalWrite(SCL, LOW);
+    bool bitv = (bytev >> x) & 1;
+    _writeBit(bitv);
   }
   Serial.print(F(" (0x"));
-  Serial.print(value, HEX);
-  Serial.print(F(")"));
-  Serial.println();
+  Serial.print(bytev, HEX);
+  Serial.println(F(")"));
 }
 
-void readAcknowledge() {
-  pinMode(SDA, INPUT);
-  digitalWrite(SCL, HIGH);
-  int acknowledge = digitalRead(SDA);
-  digitalWrite(SCL, LOW);
-  Serial.print("Read acknowledge=");
-  Serial.println(acknowledge);
-}
-
-void sendAcknowledge(boolean acknowledge) {
-  pinMode(SDA, OUTPUT);
-  digitalWrite(SCL, HIGH);
-  digitalWrite(SDA, acknowledge ? HIGH : LOW);
-  digitalWrite(SCL, LOW);
-  Serial.print("Send acknowledge=");
-  Serial.println(acknowledge);
-}
-
-void read8Bits() {
-  pinMode(SDA, INPUT_PULLUP);
-  Serial.print("Reading: ");
+void _readByte() {
+  byte bytev = 0x00;
   for (int x=7; x>=0; x--) {
-    digitalWrite(SCL, HIGH);
-    int xthBit = digitalRead(SDA);
-    digitalWrite(SCL, LOW);
-    Serial.print(xthBit);
+    bool bitv = _readBit();
+    bytev += (bitv << x);
   }
+  Serial.print(F(" (0x"));
+  Serial.print(bytev, HEX);
+  Serial.println(F(")"));
+}
+
+void _readAck() {
+  Serial.print(F("Read ACK = "));
+  _readBit();
   Serial.println();
 }
 
-void eepromWrite(int address, int value) {
-  sendStart();
-  send8Bits(B10100000);
-  readAcknowledge();
-  send8Bits(address);
-  readAcknowledge();
-  send8Bits(value);
-  readAcknowledge();
-  sendStop();
+void _writeAck(bool ack) {
+  Serial.print(F("Write ACK = "));
+  _writeBit(ack);
+  Serial.println();
 }
 
-void eepromRandomRead(int address) {
-  sendStart();
-  send8Bits(B10100000);
-  readAcknowledge();
-  send8Bits(address);
-  readAcknowledge();
-  eepromCurrentAddrRead();
+void _setDevAddr(bool isRead) {
+  // Here we could take in additionally to operation also real device address 
+  Serial.print(F("Device address = "));
+  _writeByte(isRead ? 0xA1 : 0xA0);
+  _readAck();
 }
 
-void eepromCurrentAddrRead() {
-  sendStart();
-  send8Bits(0xA1);
-  readAcknowledge();
-  read8Bits();
-  readAcknowledge();
-  sendStop();
+void _setAddr(byte addr) {  
+  Serial.print(F("Address = "));
+  _writeByte(addr);
+  _readAck();
+}
+
+void _setValue(byte val) {
+  Serial.print(F("Value = "));
+  _writeByte(val);
+  _readAck();
+}
+
+void _readValue() {
+  Serial.print(F("Value = "));
+  _readByte();
+  _readAck();
+}
+
+void eepWriteByte(byte addr, byte val) {
+  Serial.println(F("WRITE BYTE"));
+  _start();
+  _setDevAddr(false);
+  _setAddr(addr);
+  _setValue(val);
+  _stop();
+}
+
+void eepReadRandom(byte addr) {
+  Serial.println(F("READ RANDOM"));
+  _start();
+  _setDevAddr(false);
+  _setAddr(addr);
+  eepReadCurrent();
+}
+
+void eepReadCurrent() {
+  Serial.println(F("READ CURRENT"));
+  _start();
+  _setDevAddr(true);
+  _readValue();
+  _stop();
 }
 
 void setup() {
   Serial.begin(115200);
   pinMode(SCL, OUTPUT);
-  pinMode(SDA, OUTPUT);
   digitalWrite(SCL, LOW);
-  digitalWrite(SDA, LOW);
 
-  Serial.println("---");
-  // 1010 3<DEVICE_ADR> 1<W0/R1>
+  Serial.println();
+  Serial.println(F("== WRITE TO FIRST FIVE"));
+  for (int addr=0; addr<5; addr++) {
+    eepWriteByte(addr, 5 - addr);
+  }
 
-  // Write 10101010 to 0
-//  for (int addr=0; addr<5; addr++) {
-//    eepromWrite(addr, addr);
-//  }
-
-  // Random Read 0
-//   eepromWrite(0x00, 0x00);
-//   delay(100);
-//   eepromCurrentAddrRead();
-   eepromRandomRead(0x02);
-
+  Serial.println();
+  Serial.println(F("== RANDOM READ ZERO"));
+  eepReadRandom(0x00);
+  
+  Serial.println();
+  Serial.println(F("== CURRENT READ NEXT FOUR"));
+  eepReadCurrent();
+  eepReadCurrent();
+  eepReadCurrent();
+  eepReadCurrent();
   
 }
 
