@@ -19,9 +19,11 @@ unsigned long currentMillis;
 unsigned long timer;
 const unsigned long beamPeriod = 2000;
 const unsigned long receiverPeriod = 700;
-const unsigned long pausePeriod = 10000;
+const unsigned long pausePeriod = 3000;
+const unsigned long pulsePeriod = 200;
 bool beamDetected;
 bool isBeamUp;
+bool isLedOn;
 
 // this is temporary helper to detect the PIN on the board by sending repeating signal to it
 void debugPin(int testPin) {
@@ -62,16 +64,16 @@ void setup() {
   Serial.println("Setup finished");
 }
 
-void startBeam() {
-  Serial.println("Start beam");
+void turnOnLed() {
+  Serial.println("LED ON");
   digitalWrite(kTransmitterPin, HIGH);
-  isBeamUp = true;
+  isLedOn = true;
 }
 
-void stopBeam() {
-  Serial.println("Stop beam");
+void turnOffLed() {
+  Serial.println("LED OFF");
   digitalWrite(kTransmitterPin, LOW);
-  isBeamUp = false;
+  isLedOn = false;
 }
 
 bool detectBeam() {
@@ -89,10 +91,20 @@ void loop() {
   bool isFirstRun = timer == 0;
   bool isPauseOver = (currentMillis - timer) >= (beamPeriod + pausePeriod);
   
-  if ((isFirstRun || isPauseOver) && !isBeamUp) {
-    startBeam();
+  if ((isFirstRun || isPauseOver) && !isBeamUp) {    
+    Serial.println("Start beam");
     beamDetected = false;
+    isBeamUp = true;
     timer = currentMillis;
+  }
+
+  if (isBeamUp) {
+    bool isPulseUp = (((currentMillis - timer) / pulsePeriod) % 2) == 0;
+    if (isPulseUp && !isLedOn) {
+      turnOnLed();
+    } else if (!isPulseUp && isLedOn) {
+      turnOffLed();
+    }
   }
 
   bool receiverStart = (currentMillis - timer) >= (beamPeriod - receiverPeriod) / 2;
@@ -102,8 +114,10 @@ void loop() {
   }
 
   bool beamStop = ((currentMillis - timer) >= beamPeriod);
-  if (beamStop && isBeamUp) {
-    stopBeam();
+  if (beamStop && isBeamUp) { 
+    Serial.println("Stop beam");
+    turnOffLed();
+    isBeamUp = false;
   
     Serial.print("Beam detected = ");
     Serial.println(beamDetected);
