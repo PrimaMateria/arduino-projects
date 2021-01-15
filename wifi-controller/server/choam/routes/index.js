@@ -5,7 +5,10 @@ const postService = require("../services/postService");
 /* GET home page. */
 router.get("/", function (req, res, next) {
     const post = postService.getPost();
-    res.render("index", { postPing: post.ping || "undefined" });
+    res.render("index", {
+        postPing: post.ping || "undefined",
+        postStatus: post.status,
+    });
 });
 
 module.exports = router;

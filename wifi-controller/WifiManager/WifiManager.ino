@@ -4,9 +4,11 @@
 #include <IRrecv.h>
 #include <IRremoteESP8266.h>
 
+const uint16_t kAutoConfigTimeout = 10;
 const uint32_t kBaudRate = 115200;
 const uint16_t kReceiverPin = 14;
 const uint16_t kTransmitterPin = 4;
+const uint16_t kMaxChecks = 3;
 
 IRrecv irrecv(kReceiverPin);
 decode_results results;
@@ -24,6 +26,7 @@ const unsigned long pulsePeriod = 200;
 bool beamDetected;
 bool isBeamUp;
 bool isLedOn;
+uint16_t checksCount = 0;
 
 // this is temporary helper to detect the PIN on the board by sending repeating signal to it
 void debugPin(int testPin) {
@@ -36,16 +39,35 @@ void debugPin(int testPin) {
 
 void startWifiManager() {
   WiFiManager wm;
+  wm.setConfigPortalTimeout(kAutoConfigTimeout);
   wm.autoConnect("NodeMCU");
   Serial.println("Connected");
 }
 
 void pingServer() {
   if (client.connect(server, port)) {
-    Serial.println("Client connected to server");
-    client.println("POST /post HTTP/1.0");
+    Serial.println("Sending POST /post/ping");
+    client.println("POST /post/ping HTTP/1.0");
     client.println();
-  }  
+  } else {
+    Serial.print("Failed to connect client");
+  }
+}
+
+void putPostStatus() {
+  if (client.connect(server, port)) {
+    Serial.println("Sending PUT /post/status/");
+    client.print("PUT /post/status/");
+    if (beamDetected == 1) {
+      client.print("false");
+    } else {
+      client.print("true");
+    }
+    client.println(" HTTP/1.0");
+    client.println();
+  } else {
+    Serial.print("Failed to connect client");
+  }
 }
 
 void setup() {
@@ -53,13 +75,14 @@ void setup() {
   while(!Serial) {
     delay(50);
   }
-
+ 
 
   pinMode(kTransmitterPin, OUTPUT);
   irrecv.enableIRIn();
+  checksCount = 0;
   
-  //startWifiManager();
-  //pingServer();
+  startWifiManager();
+  pingServer();
   
   Serial.println("Setup finished");
 }
@@ -85,7 +108,7 @@ bool detectBeam() {
   return isBeamDetected;
 }
 
-void loop() {
+void check() {  
   currentMillis = millis();
 
   bool isFirstRun = timer == 0;
@@ -118,10 +141,24 @@ void loop() {
     Serial.println("Stop beam");
     turnOffLed();
     isBeamUp = false;
+    checksCount++;
   
     Serial.print("Beam detected = ");
     Serial.println(beamDetected);
   }
-  
+}
+
+void loop() {
+
+  if (checksCount < kMaxChecks) {
+    check();
+  } else {
+    Serial.println("Checks done, sending status to server and enabling deep sleep");
+    putPostStatus();
+    //TODO: deep sleep
+    delay(20000);
+    checksCount = 0;
+  }
+    
   delay(20);
 }
