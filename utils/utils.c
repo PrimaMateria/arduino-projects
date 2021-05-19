@@ -27,9 +27,3 @@ void printWifiStatus() {
   Serial.println(" dBm");
 }
 
-void startWifiManager() {
-  WiFiManager wm;
-  wm.setConfigPortalTimeout(kAutoConfigTimeout);
-  wm.autoConnect("NodeMCU");
-  Serial.println("Connected");
-}

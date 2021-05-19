@@ -13,6 +13,14 @@ const uint32_t kBaudRate = 115200;
  * 4 - Cmdline mode  - violet
  * 5 - Terminal mode - yellow
  */
+const uint16_t colors[6][3] = {
+  {   0,   0,   0 },
+  {   0,   0, 255 },
+  { 255,   0,   0 },
+  {   0, 255,   0 },
+  { 255,   0, 255 },
+  { 255, 255,   0 }
+};
 
 const uint16_t ledR = 14;
 const uint16_t ledG = 13;
@@ -49,31 +57,9 @@ void startWifiManager() {
 }
 
 void indicateMode(int mode) {
-  if (mode == 0) {
-    analogWrite(ledR,0);
-    analogWrite(ledG,0);
-    analogWrite(ledB,0);
-  } else if (mode == 1) {
-    analogWrite(ledR,0);
-    analogWrite(ledG,0);
-    analogWrite(ledB,255);
-  } else if (mode == 2) {
-    analogWrite(ledR,255);
-    analogWrite(ledG,0);
-    analogWrite(ledB,0);
-  } else if (mode == 3) {
-    analogWrite(ledR,0);
-    analogWrite(ledG,255);
-    analogWrite(ledB,0);
-  } else if (mode == 4) {
-    analogWrite(ledR,255);
-    analogWrite(ledG,0);
-    analogWrite(ledB,255);
-  } else if (mode == 5) {
-    analogWrite(ledR,255);
-    analogWrite(ledG,255);
-    analogWrite(ledB,0);
-  }
+  analogWrite(ledR,colors[mode][0]);
+  analogWrite(ledG,colors[mode][1]);
+  analogWrite(ledB,colors[mode][2]);
 }
 
 void listen() {
