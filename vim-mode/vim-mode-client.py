@@ -19,7 +19,7 @@ def get_vim_mode(socket):
     elif mode == "t":
         return "5"
     else:
-        print(mode);
+        print(mode)
         return "0"
 
 @click.command()
@@ -30,8 +30,9 @@ def main(socket, target, frequency):
     """It periodically queries NVIM API through socket file to acquire current mode and passes it via HTTP call to the vim-mode box"""
     while True:
         mode = get_vim_mode(socket)
-        requests.get(target, headers={"mode":mode});
+        requests.get(target, headers={"mode":mode})
         time.sleep(frequency)
 
 if __name__ == "__main__":
+    # pylint: disable=no-value-for-parameter
     main()
